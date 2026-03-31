@@ -24,7 +24,7 @@ const publicRoutes = [
   '/api/auth'
 ]
 
-/** Match first middleware branch: do not use pathname.startsWith('/') — that marks every path public. */
+/** Match first proxy branch: do not use pathname.startsWith('/') — that marks every path public. */
 function isPublicPath(pathname: string): boolean {
   return (
     publicRoutes.some(
@@ -37,7 +37,7 @@ function isPublicPath(pathname: string): boolean {
   )
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Create a response object
   let response = NextResponse.next({
     request: {

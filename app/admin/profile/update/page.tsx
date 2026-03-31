@@ -45,6 +45,8 @@ export default function AdminUpdateProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!session) return;
+    
     setIsSubmitting(true);
     setError('');
     setMessage('');
