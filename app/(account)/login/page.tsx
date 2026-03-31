@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { pathWhenAlreadyLoggedIn } from '@/lib/post-login-redirect';
 
 type FormData = {
   email: string;
@@ -21,15 +23,13 @@ export default function LoginPage() {
   const [emailChecked, setEmailChecked] = useState(false);
   const [emailExists, setEmailExists] = useState<boolean | null>(null);
 
-  // Check if user is already logged in
-  useEffect(() => {
-    if (session) {
-      router.push('/home');
-    }
-  }, [session, router]);
-
-  // Check for redirect URL
   const redirectTo = searchParams.get('redirectedFrom') || '/home';
+
+  // Already logged in: respect redirectedFrom (e.g. /admin after gate redirect)
+  useEffect(() => {
+    if (!session) return;
+    router.replace(pathWhenAlreadyLoggedIn(searchParams.get('redirectedFrom'), session.role));
+  }, [session, router, searchParams]);
 
   const reset = searchParams.get('reset') === '1';
   
@@ -71,33 +71,82 @@ export default function LoginPage() {
         throw new Error('Email is required');
       }
 
-      const res = await fetch('/api/check-email', {
+      console.log('Checking email:', formData.email);
+
+      const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+      if (!apiBase) {
+        throw new Error('NEXT_PUBLIC_API_URL is not set in .env.local');
+      }
+
+      const response = await fetch(`${apiBase}/api/auth/check-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email }),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+        }),
+        mode: 'cors',
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to check email');
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        let message = `Server error: ${response.status}`;
+        try {
+          const errJson = JSON.parse(errorText) as { detail?: string | { msg?: string }[] };
+          if (typeof errJson.detail === 'string') {
+            message = errJson.detail;
+          } else if (Array.isArray(errJson.detail)) {
+            message = errJson.detail.map((d) => d.msg ?? String(d)).join(', ');
+          }
+        } catch {
+          if (errorText) message = errorText;
+        }
+        throw new Error(message);
       }
 
-      if (data?.banned) {
+      let data;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.log('Raw response:', text);
+        
+        // Try to extract JSON from HTML response
+        try {
+          const jsonMatch = text.match(/\{[^}]+\}/);
+          if (jsonMatch) {
+            data = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('Invalid response format from server');
+          }
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          throw new Error('Unable to parse server response');
+        }
+      }
+      console.log('Response data:', data);
+
+      if (data.exists) {
         setEmailChecked(true);
         setEmailExists(true);
-        setError('Your account has been banned. Please contact support for assistance.');
-        return;
+        setSuccess(
+          'This email is registered. Choose Login with Password or Login with OTP.'
+        );
+      } else {
+        setEmailChecked(true);
+        setEmailExists(false);
+        setSuccess('Email not found. Would you like to create a new account?');
       }
-
-      if (!data?.exists) {
-        router.push(`/signup?email=${encodeURIComponent(formData.email)}`);
-        return;
-      }
-
-      setEmailChecked(true);
-      setEmailExists(true);
-      setSuccess('Account found. Choose a login method.');
     } catch (err: unknown) {
+      console.error('Check email error:', err);
       const msg = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(msg);
     } finally {
@@ -111,6 +160,10 @@ export default function LoginPage() {
 
   const handleOtpRoute = () => {
     router.push(`/login-otp?email=${encodeURIComponent(formData.email)}&redirectedFrom=${encodeURIComponent(redirectTo)}`);
+  };
+
+  const handleSignupRoute = () => {
+    router.push(`/signup?email=${encodeURIComponent(formData.email)}&redirectedFrom=${encodeURIComponent(redirectTo)}`);
   };
 
   return (
@@ -183,32 +236,44 @@ export default function LoginPage() {
             )}
 
             {emailChecked && emailExists === true && (
+              <div className="mb-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={handlePasswordRoute}
+                  disabled={loading}
+                  className="w-full py-3 px-4 rounded-lg font-semibold border-0 transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  Login with Password
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOtpRoute}
+                  disabled={loading}
+                  className="w-full py-3 px-4 rounded-lg font-semibold border border-violet-300 dark:border-violet-600 transition-all bg-white/80 dark:bg-gray-800/80 text-violet-700 dark:text-violet-300 shadow-md hover:bg-violet-50 dark:hover:bg-violet-950/50 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  Login with OTP
+                </button>
+                <p className="text-center text-sm">
+                  <Link
+                    href={`/forgot-password?email=${encodeURIComponent(formData.email)}`}
+                    className="font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </p>
+              </div>
+            )}
+
+            {emailChecked && emailExists === false && (
               <div className="mb-4">
-                <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePasswordRoute}
-                    disabled={loading}
-                    className="w-full py-3 px-4 rounded-lg font-semibold border-0 transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    Login with Password
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOtpRoute}
-                    disabled={loading}
-                    className="w-full py-3 px-4 rounded-lg font-semibold border-0 transition-all bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg hover:from-emerald-700 hover:to-teal-700 hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    Login with OTP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/login?reset=1')}
-                    className="w-full py-2 text-sm text-gray-700 dark:text-gray-300 hover:underline"
-                  >
-                    Use a different email
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleSignupRoute}
+                  disabled={loading}
+                  className="w-full py-3 px-4 rounded-lg font-semibold border-0 transition-all bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  Create New Account
+                </button>
               </div>
             )}
           </div>

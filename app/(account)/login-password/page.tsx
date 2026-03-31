@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { pathAfterLogin, pathWhenAlreadyLoggedIn } from '@/lib/post-login-redirect';
 
 export default function LoginPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { session, signIn, refreshSession } = useAuth();
+  const { session, signIn } = useAuth();
 
   const email = searchParams.get('email') || '';
   const redirectTo = searchParams.get('redirectedFrom') || '/home';
@@ -21,8 +23,9 @@ export default function LoginPasswordPage() {
 
 
   useEffect(() => {
-    if (session) router.push('/home');
-  }, [session, router]);
+    if (!session) return;
+    router.replace(pathWhenAlreadyLoggedIn(searchParams.get('redirectedFrom'), session.role));
+  }, [session, router, searchParams]);
 
   useEffect(() => {
     if (!email) router.push('/login');
@@ -41,7 +44,8 @@ export default function LoginPasswordPage() {
 
       const { error, data } = await signIn(email, password);
       if (error) {
-        throw new Error(typeof error === 'string' ? error : 'Invalid email or password');
+        setError(typeof error === 'string' ? error : 'Invalid email or password');
+        return;
       }
 
       if (data?.requiresOtp) {
@@ -50,12 +54,9 @@ export default function LoginPasswordPage() {
         return;
       }
 
-      await refreshSession();
-
-      const role = data?.user?.role || 'user';
-      if (role === 'admin') router.push('/admin/welcome'); else router.push(redirectTo);
+      const role = (data?.user?.role === 'admin' ? 'admin' : 'user') as 'admin' | 'user';
+      router.replace(pathAfterLogin(redirectTo, role));
     } catch (err: unknown) {
-      console.error('Password login error:', err);
       const msg = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(msg);
     } finally {
@@ -125,6 +126,14 @@ export default function LoginPasswordPage() {
               </button>
             </div>
 
+            <div className="flex justify-end">
+              <Link
+                href={`/forgot-password?email=${encodeURIComponent(email)}`}
+                className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           <button

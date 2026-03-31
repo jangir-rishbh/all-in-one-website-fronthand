@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 import { 
   Menu, 
   X, 
@@ -39,8 +40,19 @@ export default function AdminClientLayout({ children, navItems, user }: AdminCli
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [websiteName, setWebsiteName] = useState('Admin Panel');
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    api.getWebsiteInfo()
+      .then((res) => {
+        if (res.success && res.websiteInfo?.name) {
+          setWebsiteName(res.websiteInfo.name);
+        }
+      })
+      .catch(() => {/* keep default */});
+  }, []);
 
   // Auto-close mobile sidebar when clicking outside
   const handleOverlayClick = () => {
@@ -54,16 +66,21 @@ export default function AdminClientLayout({ children, navItems, user }: AdminCli
       case 'Users': return <Users className="h-5 w-5" />;
       case 'Products': return <Package className="h-5 w-5" />;
       case 'Massage': return <MessageSquare className="h-5 w-5" />;
+      case 'Settings': return <Settings className="h-5 w-5" />;
       default: return <Home className="h-5 w-5" />;
     }
   };
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout', { method: 'POST' });
-      router.push('/login');
+      await api.logout();
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
+      try {
+        localStorage.removeItem('custom_user');
+      } catch {}
+      router.push('/login');
     }
   };
 
@@ -87,7 +104,7 @@ export default function AdminClientLayout({ children, navItems, user }: AdminCli
             >
               {isMobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
-            <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Panel</h1>
+            <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{websiteName}</h1>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -133,7 +150,7 @@ export default function AdminClientLayout({ children, navItems, user }: AdminCli
                 <TrendingUp className="h-4 w-4 lg:h-6 lg:w-6 text-white" />
               </div>
               <h2 className="font-bold text-lg lg:text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Admin Panel
+                {websiteName}
               </h2>
             </div>
           </div>
@@ -178,7 +195,7 @@ export default function AdminClientLayout({ children, navItems, user }: AdminCli
         <div className="hidden lg:block bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
           <div className="flex items-center justify-between p-6">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Panel</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{websiteName}</h1>
             </div>
             
             <div className="flex items-center space-x-4">

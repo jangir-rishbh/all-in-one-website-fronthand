@@ -6,35 +6,10 @@ import { useAuth } from "@/context/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/context/I18nContext";
 
-// Sign out function
-const handleSignOut = async () => {
-  try {
-    // Clear local storage and session storage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth');
-      sessionStorage.clear();
-      
-      // Clear all cookies
-      document.cookie.split(';').forEach(c => {
-        document.cookie = c.trim().split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-      });
-      
-      // Call the signout API
-      await fetch('/api/auth/signout', { method: 'POST' });
-      
-      // Force a full page reload to clear all states
-      window.location.href = '/login';
-    }
-  } catch (error) {
-    console.error('Error during logout:', error);
-    // Still redirect to login even if there was an error
-    window.location.href = '/login';
-  }
-};
-
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [websiteInfo, setWebsiteInfo] = useState({ name: 'Ma Baba Cloth Store', logoUrl: '' });
   const { session, loading, signOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -45,6 +20,22 @@ export default function Navbar() {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  // Fetch website identity info
+  useEffect(() => {
+    const fetchInfo = async () => {
+      try {
+        const { api } = await import('@/lib/api');
+        const res = await api.getWebsiteInfo();
+        if (res.success && res.websiteInfo) {
+          setWebsiteInfo(res.websiteInfo);
+        }
+      } catch (err) {
+        console.error('Failed to fetch website info:', err);
+      }
+    };
+    fetchInfo();
+  }, []);
 
   // Fixed brand text as per request
   const brandText = 'MB';
@@ -97,16 +88,28 @@ export default function Navbar() {
             <Link href="/home" className="group relative">
               <div className="flex items-center">
                 <div className="mr-2 sm:mr-3 relative -ml-1 sm:-ml-2">
-                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white text-purple-700 flex items-center justify-center font-extrabold border-2 border-white ring-2 ring-yellow-400" title={(!loading && session) ? (session.name || session.email || 'MB') : 'MB'}>
-                    <span className="text-base sm:text-lg leading-none">{brandText}</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white text-purple-700 flex items-center justify-center font-extrabold border-2 border-white ring-2 ring-yellow-400" title={websiteInfo.name}>
+                    {websiteInfo.logoUrl ? (
+                      <div className="w-full h-full rounded-full overflow-hidden">
+                        <img src={websiteInfo.logoUrl} alt="Logo" className="w-full h-full object-contain p-1 rounded-full" />
+                      </div>
+                    ) : (
+                      <span className="text-base sm:text-lg leading-none">{websiteInfo.name?.substring(0, 2).toUpperCase() || 'MB'}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xl sm:text-3xl md:text-4xl font-serif font-black leading-tight whitespace-nowrap">
-                    <span className="text-yellow-400 drop-shadow">Ma</span>
-                    <span className="text-white"> </span>
-                    <span className="text-white drop-shadow">Baba</span>
-                    <span className="inline text-white/80 text-base sm:text-2xl md:text-3xl font-semibold"> Cloth Store</span>
+                    {websiteInfo.name === 'Ma Baba Cloth Store' ? (
+                      <>
+                        <span className="text-yellow-400 drop-shadow-sm">Ma</span>
+                        <span className="text-white"> </span>
+                        <span className="text-white drop-shadow-sm">Baba</span>
+                        <span className="inline text-white/80 text-base sm:text-2xl md:text-3xl font-semibold lowercase"> cloth store</span>
+                      </>
+                    ) : (
+                      <span className="text-white drop-shadow-sm">{websiteInfo.name}</span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -181,6 +184,18 @@ export default function Navbar() {
                         </svg>
                         {t('settings')}
                       </Link>
+
+                      <Link 
+                        href="/change-password" 
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        {t('changePassword')}
+                      </Link>
+
 
                       <button
                         type="button"
@@ -301,6 +316,15 @@ export default function Navbar() {
                           {t('yourProfile')}
                         </Link>
                       )}
+
+                      <Link
+                        href="/change-password"
+                        className="block px-4 py-3 rounded-lg text-base font-medium text-white hover:bg-white/10 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {t('changePassword')}
+                      </Link>
+
 
                       <button
                         type="button"

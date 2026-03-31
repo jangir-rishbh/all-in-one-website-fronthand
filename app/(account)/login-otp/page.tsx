@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
+import { pathAfterLogin, pathWhenAlreadyLoggedIn } from '@/lib/post-login-redirect';
 
 export default function LoginOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { session, refreshSession } = useAuth();
+  const { session, refreshSession, verifyOtp: ctxVerifyOtp } = useAuth();
 
   const email = searchParams.get('email') || '';
   const redirectTo = searchParams.get('redirectedFrom') || '/home';
@@ -19,8 +21,9 @@ export default function LoginOtpPage() {
   const [otpSent, setOtpSent] = useState(false);
 
   useEffect(() => {
-    if (session) router.push('/home');
-  }, [session, router]);
+    if (!session) return;
+    router.replace(pathWhenAlreadyLoggedIn(searchParams.get('redirectedFrom'), session.role));
+  }, [session, router, searchParams]);
 
   useEffect(() => {
     if (!email) router.push('/login');
@@ -32,17 +35,7 @@ export default function LoginOtpPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/api/login-otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to send OTP');
-      }
-
+      await api.sendOtp({ email, purpose: 'login' });
       setOtpSent(true);
       setSuccess('OTP sent to your email.');
     } catch (err: unknown) {
@@ -65,21 +58,14 @@ export default function LoginOtpPage() {
         throw new Error('Please enter 6-digit OTP');
       }
 
-      const res = await fetch('/api/login-otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: otpValue }),
-      });
+      const res = await ctxVerifyOtp(email, otpValue);
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to verify OTP');
+      if (!res.success) {
+        throw new Error(res.error || 'Verification failed');
       }
 
-      await refreshSession();
-
-      const role = data?.user?.role || 'user';
-      if (role === 'admin') router.push('/admin/welcome'); else router.push(redirectTo);
+      const role = (res.data?.user?.role === 'admin' ? 'admin' : 'user') as 'admin' | 'user';
+      router.replace(pathAfterLogin(redirectTo, role));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(msg);

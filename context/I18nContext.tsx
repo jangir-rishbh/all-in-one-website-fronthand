@@ -19,6 +19,8 @@ const resources: Resources = {
     login: "Login",
     signup: "Sign Up",
     yourProfile: "Your Profile",
+    changePassword: "Change Password",
+
 
     // Brand tagline
     brandTagline: "Elegant clothing & Fashion",
@@ -59,6 +61,8 @@ const resources: Resources = {
     login: "लॉगिन",
     signup: "साइन अप",
     yourProfile: "आपकी प्रोफ़ाइल",
+    changePassword: "पासवर्ड बदलें",
+
 
     // Brand tagline
     brandTagline: "खूबसूरत कपड़े और फ़ैशन",

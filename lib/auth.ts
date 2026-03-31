@@ -1,12 +1,13 @@
 import { cookies } from 'next/headers';
 import { verifySession, SessionPayload } from '@/lib/session';
-import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+function apiBaseUrl(): string {
+  const v = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!v) {
+    throw new Error('NEXT_PUBLIC_API_URL is required in .env.local');
+  }
+  return v.replace(/\/$/, '');
+}
 
 export type CurrentUser = {
   id: string;
@@ -19,29 +20,33 @@ export type CurrentUser = {
   two_factor_enabled?: boolean;
 } | null;
 
+/** Server-side user: Express `custom_token` cookie or legacy `session` / `session_token`. */
 export async function getCurrentUserFromCookie(): Promise<CurrentUser> {
   const store = await cookies();
-  const token = store.get('session')?.value;
-  if (!token) return null;
-  const payload = await verifySession(token);
-  if (!payload) return null;
+  const hasAuthCookie = Boolean(
+    store.get('custom_token')?.value ||
+      store.get('session_token')?.value ||
+      store.get('session')?.value
+  );
+  if (!hasAuthCookie) return null;
 
-  const { data: user } = await supabaseAdmin
-    .from('users')
-    .select('id, email, name, mobile, gender, state, role, two_factor_enabled')
-    .eq('id', payload.uid)
-    .single();
-  if (!user) return null;
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    mobile: user.mobile,
-    gender: user.gender,
-    state: user.state,
-    role: (user as { role?: 'admin' | 'user' }).role || 'user',
-    two_factor_enabled: (user as { two_factor_enabled?: boolean }).two_factor_enabled,
-  };
+  const cookieHeader = store
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join('; ');
+
+  try {
+    const url = `${apiBaseUrl()}/api/auth/me`;
+    const res = await fetch(url, {
+      headers: { Cookie: cookieHeader },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { user: CurrentUser | null };
+    return data.user ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function requireAdmin(): Promise<CurrentUser> {
@@ -55,9 +60,11 @@ export async function requireAdmin(): Promise<CurrentUser> {
   return user;
 }
 
-export async function extractSessionFromRequestCookie(req: Request): Promise<SessionPayload | null> {
+export async function extractSessionFromRequestCookie(
+  req: Request
+): Promise<SessionPayload | null> {
   const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(/(?:^|; )session=([^;]+)/);
-  const token = match ? decodeURIComponent(match[1]) : '';
+  const sessionMatch = cookie.match(/(?:^|; )session=([^;]+)/);
+  const token = sessionMatch ? decodeURIComponent(sessionMatch[1]) : '';
   return token ? await verifySession(token) : null;
 }

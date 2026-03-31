@@ -1,12 +1,12 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@components/ProductCard";
-import { useState, useEffect as useEffect2 } from "react";
 
 // Clothing collection with different categories
 const featuredProducts = [
@@ -88,6 +88,17 @@ export default function HomePage() {
   const searchParams = useSearchParams();
   const redirectedFrom = searchParams.get('redirectedFrom');
   const [custom, setCustom] = useState<Array<{ id: string; name: string; price: number; image?: string | null; category?: string | null }>>([]);
+  const [websiteName, setWebsiteName] = useState('Ma Baba');
+
+  useEffect(() => {
+    api.getWebsiteInfo()
+      .then((res) => {
+        if (res.success && res.websiteInfo?.name) {
+          setWebsiteName(res.websiteInfo.name);
+        }
+      })
+      .catch(() => {/* ignore error */});
+  }, []);
 
   useEffect(() => {
     if (redirectedFrom) {
@@ -98,16 +109,24 @@ export default function HomePage() {
     }
   }, [redirectedFrom]);
 
-  useEffect2(() => {
+  useEffect(() => {
     (async () => {
       try {
-        const resp = await fetch('/api/products/custom', { cache: 'no-store' });
-        const data: { products?: Array<{ id: string; name: string; price: number | string; image?: string | null; category?: string | null }> } = await resp.json();
-        if (resp.ok) {
-          const list = (data.products || []).map(p => ({ id: String(p.id), name: String(p.name), price: Number(p.price), image: p.image || null, category: p.category || 'Custom' }));
-          setCustom(list);
+        const res = await fetch('/api/products/custom');
+        if (!res.ok) {
+          setCustom([]);
+          return;
         }
-      } catch {}
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          setCustom([]);
+          return;
+        }
+        const data = await res.json();
+        setCustom(Array.isArray(data) ? data : []);
+      } catch (error) {
+        setCustom([]);
+      }
     })();
   }, []);
 
@@ -131,8 +150,7 @@ export default function HomePage() {
             <span className="block text-yellow-400 mb-2 text-3xl md:text-4xl font-light tracking-widest">WELCOME TO</span>
             <span className="relative inline-block">
               <span className="relative z-10">
-                <span className="text-yellow-400">Ma Baba</span>
-                <span className="text-white"> Cloth Store</span>
+                <span className="text-yellow-400">{websiteName}</span>
               </span>
               <span className="absolute bottom-2 left-0 w-full h-4 bg-yellow-400/30 -z-0 transform -rotate-1"></span>
             </span>

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
 
 export default function ForgotPassword() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -15,6 +16,11 @@ export default function ForgotPassword() {
   const [message, setMessage] = useState({ text: '', isError: false });
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const fromQuery = searchParams.get('email')?.trim();
+    if (fromQuery) setEmail(fromQuery);
+  }, [searchParams]);
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();

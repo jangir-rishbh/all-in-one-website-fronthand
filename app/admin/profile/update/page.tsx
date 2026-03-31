@@ -55,7 +55,7 @@ export default function AdminUpdateProfilePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, email: session.email })
       });
       
       const result = await resp.json();

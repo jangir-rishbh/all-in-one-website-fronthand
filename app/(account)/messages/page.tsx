@@ -41,13 +41,27 @@ export default function MessagesPage() {
     }
   }, [session]);
 
+  const authHeaders = (): HeadersInit => {
+    try {
+      const token = localStorage.getItem('custom_token');
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+      return {};
+    }
+  };
+
   const fetchMessages = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/messages');
+      const response = await fetch('/api/messages', {
+        cache: 'no-store',
+        headers: authHeaders(),
+      });
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        const data = await response.json();
         setMessages(data.messages || []);
+      } else {
+        console.error('Error fetching messages:', data?.error || response.status);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -66,16 +80,21 @@ export default function MessagesPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders(),
         },
         body: JSON.stringify({ message: newMessage.trim() }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
         setNewMessage('');
         fetchMessages(); // Refresh messages
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to send message');
+        alert(
+          typeof data?.error === 'string'
+            ? data.error
+            : 'Failed to send message'
+        );
       }
     } catch (error) {
       console.error('Error sending message:', error);

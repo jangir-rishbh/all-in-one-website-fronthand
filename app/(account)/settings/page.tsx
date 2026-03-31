@@ -7,7 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import type { Locale } from '@/context/I18nContext';
 
 export default function SettingsPage() {
-  const { session, loading, refreshSession, signOut } = useAuth();
+  const { session, loading, updateProfile, signOut } = useAuth();
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
   const [saving, setSaving] = useState(false);
@@ -103,22 +103,14 @@ export default function SettingsPage() {
     setError(null);
     setSuccess(null);
     try {
-      const resp = await fetch('/api/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name?.trim() || '',
-          mobile: mobile?.trim() || null,
-          gender: gender || null,
-          state: userState || null,
-        }),
+      const result = await updateProfile({
+        name: name?.trim() || '',
+        mobile: mobile?.trim() || undefined,
+        gender: gender || undefined,
+        state: userState || undefined,
       });
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data?.error || 'Update failed');
-      }
+      if (!result.success) throw new Error(result.error || 'Update failed');
       setSuccess('Profile updated successfully');
-      await refreshSession();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to update profile';
       setError(message);

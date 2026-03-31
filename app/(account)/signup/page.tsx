@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -175,20 +176,8 @@ export default function SignupPage() {
         mobile: formData.mobile
       };
 
-      // Send OTP via email
-      const response = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(otpRequestData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send verification email');
-      }
+      // Send verification OTP to new user
+      await api.sendSignupVerification(formData.email);
 
       // Store user data in cookie for after verification
       const userData = {

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
+import { pathAfterLogin } from '@/lib/post-login-redirect';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -86,36 +88,22 @@ export default function VerifyOtpPage() {
 
       console.log('Sending OTP verification request...');
 
-      const res = await fetch('/api/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: otpValue }),
-      });
+      const data = await api.verifyEmail(email, otpValue);
 
-      console.log('OTP verification response status:', res.status);
-      
-      const data = await res.json();
       console.log('OTP verification response data:', data);
 
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to verify OTP');
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to verify OTP');
       }
 
-      if (data.requiresPassword) {
-        console.log('Password required, showing password form');
-        setShowPasswordForm(true);
-        setSuccess('OTP verified! Please set your password to complete account creation.');
-      } else {
-        console.log('No password required, completing verification');
-        setVerificationComplete(true);
-        setSuccess('Email verified successfully!');
-        await refreshSession();
-        setTimeout(() => {
-          const role = data?.user?.role || 'user';
-          if (role === 'admin') router.push('/admin/welcome');
-          else router.push(redirectTo);
-        }, 1500);
-      }
+      // Backend returns success, now we check if we need to set a password
+      // Since this is signup, we always route to password form if account doesn't exist yet
+      // Our backend /api/auth/verify-email just marks it as verified if user exists, 
+      // but for signup flow, we expect to show the password form.
+      
+      console.log('OTP verified, showing password form to complete signup');
+      setShowPasswordForm(true);
+      setSuccess('OTP verified! Please set your password to complete account creation.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unknown error occurred';
       console.error('OTP verification error:', msg);
@@ -132,23 +120,38 @@ export default function VerifyOtpPage() {
     try {
       console.log('Starting complete signup with email:', email);
       
-      const res = await fetch('/api/complete-signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: newPassword }),
+      // Get pending user data from cookie
+      const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('pendingUser='))
+        ?.split('=')[1];
+      
+      if (!cookieValue) {
+        throw new Error('Registration session expired. Please start over.');
+      }
+
+      const pendingUser = JSON.parse(decodeURIComponent(cookieValue));
+      
+      const data = await api.completeSignup({
+        email: pendingUser.email,
+        password: newPassword,
+        name: pendingUser.name,
+        mobile: pendingUser.mobile,
+        gender: pendingUser.gender,
+        state: pendingUser.state
       });
 
-      console.log('Complete signup response status:', res.status);
-      
-      const data = await res.json();
       console.log('Complete signup response data:', data);
 
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to complete signup');
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to complete signup');
       }
 
       setVerificationComplete(true);
       setSuccess('Account created successfully! Redirecting to login...');
+      
+      // Clear the cookie
+      document.cookie = "pendingUser=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       
       setTimeout(() => {
         router.push(`/login?email=${encodeURIComponent(email)}`);
@@ -168,15 +171,10 @@ export default function VerifyOtpPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/resend-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      const data = await api.sendSignupVerification(email);
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to resend OTP');
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to resend OTP');
       }
 
       setSuccess('OTP resent to your email.');
