@@ -267,6 +267,13 @@ export default function Navbar() {
                 {t('mobileContact')}
               </Link>
               <Link
+                href="/gallery"
+                className="flex items-center px-5 py-3.5 rounded-xl text-lg font-semibold text-white hover:bg-white/10 transition-colors border-l-4 border-transparent hover:border-yellow-400"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {t('gallery')}
+              </Link>
+              <Link
                 href="/settings"
                 className="flex items-center px-5 py-3.5 rounded-xl text-lg font-semibold text-white hover:bg-white/10 transition-colors border-l-4 border-transparent hover:border-yellow-400"
                 onClick={() => setIsMenuOpen(false)}

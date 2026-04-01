@@ -78,16 +78,17 @@ export default function GalleryPage() {
     );
   }
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Please Login to View Gallery</h2>
-          <p className="text-gray-600 dark:text-gray-300">You need to be logged in to access to gallery.</p>
-        </div>
-      </div>
-    );
-  }
+  /* Removing the authentication guard to make the gallery public */
+  // if (!session) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+  //       <div className="text-center">
+  //         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Please Login to View Gallery</h2>
+  //         <p className="text-gray-600 dark:text-gray-300">You need to be logged in to access to gallery.</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
