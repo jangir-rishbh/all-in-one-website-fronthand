@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { pathAfterLogin } from '@/lib/post-login-redirect';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function VerifyOtpPage() {
   const router = useRouter();
@@ -29,6 +28,8 @@ export default function VerifyOtpPage() {
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [resendDisabled, setResendDisabled] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (!email) router.push('/login');
@@ -53,24 +54,27 @@ export default function VerifyOtpPage() {
     setOtp(newOtp);
 
     if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`) as HTMLInputElement;
-      if (nextInput) nextInput.focus();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
     const newOtp = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
     setOtp(newOtp);
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`) as HTMLInputElement;
-      if (prevInput) {
-        prevInput.focus();
-      }
+    
+    const nextEmptyIndex = newOtp.findIndex(val => val === '');
+    if (nextEmptyIndex !== -1) {
+      inputRefs.current[nextEmptyIndex]?.focus();
+    } else {
+      inputRefs.current[5]?.focus();
     }
   };
 
@@ -86,27 +90,16 @@ export default function VerifyOtpPage() {
         throw new Error('Please enter 6-digit OTP');
       }
 
-      console.log('Sending OTP verification request...');
-
       const data = await api.verifyEmail(email, otpValue);
-
-      console.log('OTP verification response data:', data);
 
       if (!data.success) {
         throw new Error(data.message || 'Failed to verify OTP');
       }
 
-      // Backend returns success, now we check if we need to set a password
-      // Since this is signup, we always route to password form if account doesn't exist yet
-      // Our backend /api/auth/verify-email just marks it as verified if user exists, 
-      // but for signup flow, we expect to show the password form.
-      
-      console.log('OTP verified, showing password form to complete signup');
       setShowPasswordForm(true);
       setSuccess('OTP verified! Please set your password to complete account creation.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unknown error occurred';
-      console.error('OTP verification error:', msg);
       setError(msg);
     } finally {
       setLoading(false);
@@ -118,9 +111,6 @@ export default function VerifyOtpPage() {
     setError(null);
 
     try {
-      console.log('Starting complete signup with email:', email);
-      
-      // Get pending user data from cookie
       const cookieValue = document.cookie
         .split('; ')
         .find(row => row.startsWith('pendingUser='))
@@ -141,24 +131,20 @@ export default function VerifyOtpPage() {
         state: pendingUser.state
       });
 
-      console.log('Complete signup response data:', data);
-
       if (!data.success) {
         throw new Error(data.message || 'Failed to complete signup');
       }
 
       setVerificationComplete(true);
-      setSuccess('Account created successfully! Redirecting to login...');
+      setSuccess('Account created successfully! Redirecting...');
       
-      // Clear the cookie
       document.cookie = "pendingUser=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       
       setTimeout(() => {
-        router.push(`/login?email=${encodeURIComponent(email)}`);
+        router.push(`/login?email=${encodeURIComponent(email)}&registered=1`);
       }, 2000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unknown error occurred';
-      console.error('Complete signup error:', msg);
       setError(msg);
     } finally {
       setLoading(false);
@@ -186,197 +172,231 @@ export default function VerifyOtpPage() {
     }
   };
 
+  const isOtpComplete = otp.every(digit => digit !== '');
+
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-900 font-sans relative overflow-hidden">
+      
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-white/10 blur-3xl opacity-50"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-white/10 blur-3xl opacity-50"></div>
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full space-y-8 bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm p-10 rounded-2xl shadow-2xl border border-white/20 dark:border-gray-700"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="max-w-md w-full relative z-10"
       >
-        <div>
-          <h2 className="text-center text-3xl font-bold bg-gradient-to-r from-blue-600 to-pink-600 bg-clip-text text-transparent">
-            Verify Your Email
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-300">
-            We sent a 6-digit code to {email}
-          </p>
-        </div>
-
-        {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/30 p-4">
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="rounded-md bg-green-50 dark:bg-green-900/30 p-4">
-            <p className="text-sm font-medium text-green-800 dark:text-green-300">{success}</p>
-          </div>
-        )}
-
-        {!showPasswordForm && !verificationComplete ? (
-          <form onSubmit={verifyOtp} className="space-y-5">
-            <div>
-              <label htmlFor="otp-0" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Enter 6-digit code
-              </label>
-              <div className="flex justify-center space-x-2">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    id={`otp-${index}`}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]"
-                    maxLength={1}
-                    required
-                    value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={index === 0 ? handlePaste : undefined}
-                    className="w-12 h-12 text-center text-lg font-semibold border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                    autoFocus={index === 0}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={loading || otp.join('').length !== 6}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  loading || otp.join('').length !== 6
-                    ? 'bg-indigo-400 dark:bg-indigo-700 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-              >
-                {loading ? 'Verifying...' : 'Verify OTP'}
-              </button>
-            </div>
-
-            <div className="text-center text-sm">
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={resendDisabled}
-                className={`font-medium ${
-                  resendDisabled
-                    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : 'text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300'
-                }`}
-              >
-                {resendDisabled ? `Resend OTP in ${resendCountdown}s` : 'Resend OTP'}
-              </button>
-            </div>
-          </form>
-        ) : showPasswordForm && !verificationComplete ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (password === confirmPassword) {
-                completeSignup(password);
-              } else {
-                setError('Passwords do not match');
-              }
-            }}
-            className="space-y-5"
-          >
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                New Password
-              </label>
-              <div className="relative mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white pr-10"
-                  placeholder="••••••••"
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Confirm Password
-              </label>
-              <div className="relative mt-1">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white pr-10"
-                  placeholder="••••••••"
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={loading || !password || !confirmPassword}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  loading || !password || !confirmPassword
-                    ? 'bg-indigo-400 dark:bg-indigo-700 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-              >
-                {loading ? 'Creating Account...' : 'Create Account'}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {verificationComplete && (
-          <div className="mt-4 text-center">
-            <p className="text-green-600 dark:text-green-400">
-              Account created successfully! Redirecting to login page...
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl p-8 sm:p-10 rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/30 dark:border-gray-800">
+          
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {showPasswordForm ? "Set Password" : "Verify Email"}
+            </h2>
+            <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+              {showPasswordForm 
+                ? "Secure your brand new account" 
+                : `We've sent a 6-digit code to`}
+              <br />
+              <span className="text-gray-900 dark:text-gray-100 font-semibold">{email}</span>
             </p>
           </div>
-        )}
 
-        <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
-          <Link
-            href="/login"
-            className="w-full flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            Back to login
-          </Link>
+          <AnimatePresence mode="wait">
+            {(error || success) && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`mb-6 p-4 rounded-xl text-sm font-medium border flex items-start gap-3 ${
+                  error 
+                    ? 'bg-red-50 border-red-100 text-red-600 dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400' 
+                    : 'bg-green-50 border-green-100 text-green-600 dark:bg-green-900/20 dark:border-green-900/50 dark:text-green-400'
+                }`}
+              >
+                {error ? (
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path></svg>
+                ) : (
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                )}
+                <span>{error || success}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="space-y-6">
+            {!showPasswordForm && !verificationComplete ? (
+              <form onSubmit={verifyOtp} className="space-y-8">
+                <div className="space-y-4">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 text-center">
+                    Enter 6-digit verification code
+                  </label>
+                  <div className="flex justify-center gap-2 sm:gap-3">
+                    {otp.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => { inputRefs.current[index] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value.replace(/[^0-9]/g, ''))}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        onPaste={index === 0 ? handlePaste : undefined}
+                        disabled={loading}
+                        className="w-11 h-14 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:bg-white dark:focus:bg-gray-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 disabled:opacity-50 focus:scale-[1.05]"
+                        autoFocus={index === 0}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <button
+                    type="submit"
+                    disabled={loading || !isOtpComplete}
+                    className={`relative w-full flex items-center justify-center py-4 px-4 border border-transparent text-sm font-bold rounded-xl text-white shadow-lg transition-all duration-200 ${
+                      loading || !isOtpComplete
+                        ? 'bg-gray-400 dark:bg-gray-700 shadow-none cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify Code'
+                    )}
+                  </button>
+
+                  <div className="flex justify-center items-center text-sm font-medium">
+                    <span className="text-gray-500 dark:text-gray-400 mr-2">Didn't get the code?</span>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendDisabled || loading}
+                      className={`transition-colors duration-200 ${
+                        resendDisabled || loading
+                          ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300'
+                      }`}
+                    >
+                      {resendDisabled ? `Resend in ${resendCountdown}s` : 'Resend OTP'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : showPasswordForm && !verificationComplete ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (password === confirmPassword) {
+                    completeSignup(password);
+                  } else {
+                    setError('Passwords do not match');
+                  }
+                }}
+                className="space-y-5"
+              >
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="appearance-none block w-full px-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white transition-all duration-200 pr-12"
+                        placeholder="••••••••"
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="appearance-none block w-full px-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white transition-all duration-200 pr-12"
+                        placeholder="••••••••"
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !password || !confirmPassword}
+                  className={`relative w-full flex items-center justify-center py-4 px-4 border border-transparent text-sm font-bold rounded-xl text-white shadow-lg transition-all duration-200 ${
+                    loading || !password || !confirmPassword
+                      ? 'bg-gray-400 dark:bg-gray-700 shadow-none cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    'Complete Signup'
+                  )}
+                </button>
+              </form>
+            ) : null}
+
+            {verificationComplete && (
+              <div className="py-6 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 mb-4">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Welcome Aboard!</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Account created successfully. Redirecting you to the login page...
+                </p>
+              </div>
+            )}
+
+            <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800">
+              <Link
+                href="/login"
+                className="group flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+              >
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                Back to Login
+              </Link>
+            </div>
+          </div>
         </div>
       </motion.div>
     </div>
