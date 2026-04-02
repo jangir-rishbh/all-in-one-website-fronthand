@@ -229,12 +229,33 @@ export const api = {
 
   // Website Identity
   getWebsiteInfo: () =>
-    apiClient.get<{ success: boolean; websiteInfo: { name: string; logoUrl: string } }>(
-      '/api/website-info'
-    ),
+    apiClient.get<{ 
+      success: boolean; 
+      websiteInfo: { 
+        name: string; 
+        logoUrl: string;
+        address?: string;
+        phone?: string;
+        email?: string;
+        businessHours?: {
+          weekdays?: string;
+          sunday?: string;
+        };
+      } 
+    }>('/api/website-info'),
 
   updateWebsiteInfo: (
-    data: { name?: string; logoUrl?: string },
+    data: { 
+      name?: string; 
+      logoUrl?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+      businessHours?: {
+        weekdays?: string;
+        sunday?: string;
+      };
+    },
     token?: string
   ) =>
     apiClient.put<{ success: boolean; websiteInfo: any }>(

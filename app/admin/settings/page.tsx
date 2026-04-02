@@ -17,6 +17,11 @@ import { api } from '@/lib/api';
 export default function AdminSettingsPage() {
   const [name, setName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [weekdays, setWeekdays] = useState('');
+  const [sunday, setSunday] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -33,6 +38,11 @@ export default function AdminSettingsPage() {
       if (res.success && res.websiteInfo) {
         setName(res.websiteInfo.name || '');
         setLogoUrl(res.websiteInfo.logoUrl || '');
+        setAddress(res.websiteInfo.address || '');
+        setPhone(res.websiteInfo.phone || '');
+        setEmail(res.websiteInfo.email || '');
+        setWeekdays(res.websiteInfo.businessHours?.weekdays || '');
+        setSunday(res.websiteInfo.businessHours?.sunday || '');
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
@@ -47,7 +57,14 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true);
       const token = localStorage.getItem('custom_token') || '';
-      const res = await api.updateWebsiteInfo({ name, logoUrl }, token);
+      const res = await api.updateWebsiteInfo({ 
+        name, 
+        logoUrl, 
+        address, 
+        phone, 
+        email, 
+        businessHours: { weekdays, sunday } 
+      }, token);
       if (res.success) {
         setMessage({ text: 'Settings updated successfully!', type: 'success' });
         // Optional: trigger a header refresh or page reload
@@ -204,6 +221,76 @@ export default function AdminSettingsPage() {
                       Restore Original
                     </button>
                   )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Office Address
+                </label>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter full office address"
+                  rows={3}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+91 XXXXX XXXXX"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="contact@example.com"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-tight">Business Hours</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Monday - Saturday
+                    </label>
+                    <input
+                      type="text"
+                      value={weekdays}
+                      onChange={(e) => setWeekdays(e.target.value)}
+                      placeholder="9:00 AM - 9:00 PM"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Sunday
+                    </label>
+                    <input
+                      type="text"
+                      value={sunday}
+                      onChange={(e) => setSunday(e.target.value)}
+                      placeholder="10:00 AM - 8:00 PM"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 

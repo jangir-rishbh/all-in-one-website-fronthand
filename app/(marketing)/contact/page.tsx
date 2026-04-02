@@ -1,4 +1,38 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
+
 export default function ContactPage() {
+  const [websiteInfo, setWebsiteInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInfo = async () => {
+      try {
+        const res = await api.getWebsiteInfo();
+        if (res.success) {
+          setWebsiteInfo(res.websiteInfo);
+        }
+      } catch (err) {
+        console.error('Failed to fetch contact info:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInfo();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-indigo-900">
+        <Loader2 className="h-12 w-12 text-yellow-400 animate-spin" />
+      </div>
+    );
+  }
+
+  const { name, address, phone, email, businessHours } = websiteInfo || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900 py-16 px-4 sm:px-6 lg:px-8">
@@ -27,8 +61,8 @@ export default function ContactPage() {
             </div>
             <h3 className="text-xl font-bold text-center text-gray-800 dark:text-gray-100 mb-4">Call Us</h3>
             <p className="text-gray-600 dark:text-gray-300 text-center mb-4">Speak with our team</p>
-            <a href="tel:+918696790758" className="block text-center text-purple-600 hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200 text-lg font-medium transition-colors">
-              +91 86967 90758
+            <a href={`tel:${phone?.replace(/\s/g, '') || '+918696790758'}`} className="block text-center text-purple-600 hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200 text-lg font-medium transition-colors">
+              {phone || '+91 86967 90758'}
             </a>
           </div>
           
@@ -41,8 +75,8 @@ export default function ContactPage() {
             </div>
             <h3 className="text-xl font-bold text-center text-gray-800 dark:text-gray-100 mb-4">Email Us</h3>
             <p className="text-gray-600 dark:text-gray-300 text-center mb-4">Send us a message</p>
-            <a href="mailto:manishjangir348@gmail.com" className="block text-center text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 text-lg font-medium transition-colors">
-              manishjangir348@gmail.com
+            <a href={`mailto:${email || 'manishjangir348@gmail.com'}`} className="block text-center text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 text-lg font-medium transition-colors">
+              {email || 'manishjangir348@gmail.com'}
             </a>
           </div>
           
@@ -56,10 +90,14 @@ export default function ContactPage() {
             </div>
             <h3 className="text-xl font-bold text-center text-gray-800 dark:text-gray-100 mb-4">Visit Us</h3>
             <p className="text-gray-600 dark:text-gray-300 text-center mb-4">Come say hello</p>
-            <div className="text-center text-gray-700 dark:text-gray-300">
-              <p>Post office gadli, Gadli</p>
-              <p>District - Jhunjhunu</p>
-              <p>State - Rajasthan, PIN - 333033</p>
+            <div className="text-center text-gray-700 dark:text-gray-300 whitespace-pre-line">
+              {address || (
+                <>
+                  <p>Post office gadli, Gadli</p>
+                  <p>District - Jhunjhunu</p>
+                  <p>State - Rajasthan, PIN - 333033</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -83,8 +121,8 @@ export default function ContactPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Call Us</h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Speak with our team</p>
-              <a href="tel:+918696790758" className="text-purple-600 hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200 text-lg font-medium transition-colors">
-                +91 86967 90758
+              <a href={`tel:${phone?.replace(/\s/g, '') || '+918696790758'}`} className="text-purple-600 hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200 text-lg font-medium transition-colors">
+                {phone || '+91 86967 90758'}
               </a>
             </div>
             
@@ -96,8 +134,8 @@ export default function ContactPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Email Us</h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Send us an email</p>
-              <a href="mailto:manishjangir348@gmail.com" className="text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 text-lg font-medium transition-colors">
-                manishjangir348@gmail.com
+              <a href={`mailto:${email || 'manishjangir348@gmail.com'}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 text-lg font-medium transition-colors">
+                {email || 'manishjangir348@gmail.com'}
               </a>
             </div>
             
@@ -110,10 +148,14 @@ export default function ContactPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Visit Us</h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Come say hello</p>
-              <div className="text-gray-700 dark:text-gray-300">
-                <p>Post office gadli, Gadli</p>
-                <p>District - Jhunjhunu</p>
-                <p>State - Rajasthan, PIN - 333033</p>
+              <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                {address || (
+                  <>
+                    <p>Post office gadli, Gadli</p>
+                    <p>District - Jhunjhunu</p>
+                    <p>State - Rajasthan, PIN - 333033</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -165,21 +207,21 @@ export default function ContactPage() {
                 <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700 dark:text-gray-200">Monday - Saturday</span>
-                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">9:00 AM - 9:00 PM</span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">{businessHours?.weekdays || '9:00 AM - 9:00 PM'}</span>
                   </div>
                 </div>
                 
                 <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700 dark:text-gray-200">Sunday</span>
-                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">10:00 AM - 8:00 PM</span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-300">{businessHours?.sunday || '10:00 AM - 8:00 PM'}</span>
                   </div>
                 </div>
                 
                 <div className="mt-8 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 p-6 rounded-xl text-center">
                   <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Need help urgently?</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">Call us anytime for immediate assistance</p>
-                  <a href="tel:+919876543210" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity">
+                  <a href={`tel:${phone?.replace(/\s/g, '') || '+918696790758'}`} className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
