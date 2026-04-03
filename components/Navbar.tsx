@@ -61,13 +61,12 @@ export default function Navbar() {
     { key: 'home', href: '/home' },
     { key: 'about', href: '/about' },
     { key: 'contact', href: '/contact' },
-    { key: 'gallery', href: '/gallery' },
   ];
   const navItems = (!loading && session)
     ? [
-        ...baseNavItems,
-        { key: 'messages', href: '/messages' },
-      ]
+      ...baseNavItems,
+      { key: 'messages', href: '/messages' },
+    ]
     : baseNavItems;
 
   return (
@@ -115,27 +114,26 @@ export default function Navbar() {
               </div>
             </Link>
           </div>
-          
+
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1 flex-1 justify-center">
             {navItems.map((item) => (
-              <Link 
+              <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-2 md:px-4 md:py-2.5 rounded-md transition-colors text-sm md:text-base ${
-                  pathname === item.href 
-                    ? 'bg-white/20 text-white' 
+                className={`px-3 py-2 md:px-4 md:py-2.5 rounded-md transition-colors text-sm md:text-base ${pathname === item.href
+                    ? 'bg-white/20 text-white'
                     : 'text-white hover:bg-white/10'
-                }`}
+                  }`}
               >
                 {t(item.key)}
               </Link>
             ))}
-            
+
             {!loading && (
               session ? (
                 <div className="relative ml-4">
-                  <button 
+                  <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className={`flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-600 focus:ring-white`}
                   >
@@ -148,8 +146,8 @@ export default function Navbar() {
                   {isUserMenuOpen && (
                     <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                       {!isAdmin && (
-                        <Link 
-                          href="/profile" 
+                        <Link
+                          href="/profile"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
@@ -161,8 +159,8 @@ export default function Navbar() {
                       )}
 
                       {isAdmin && (
-                        <Link 
-                          href="/admin/profile" 
+                        <Link
+                          href="/admin/profile"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
@@ -173,8 +171,8 @@ export default function Navbar() {
                         </Link>
                       )}
 
-                      <Link 
-                        href="/settings" 
+                      <Link
+                        href="/settings"
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
@@ -185,8 +183,8 @@ export default function Navbar() {
                         {t('settings')}
                       </Link>
 
-                      <Link 
-                        href="/change-password" 
+                      <Link
+                        href="/change-password"
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
@@ -210,28 +208,39 @@ export default function Navbar() {
                         </svg>
                         {t('logout')}
                       </button>
-                      
+
                     </div>
                   )}
                 </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Link
-                      href="/login"
-                      className="px-4 py-2 bg-white text-purple-600 rounded-md hover:bg-gray-100 transition-colors"
-                    >
-                      Login/Signup
-                    </Link>
-                  </div>
-                )
-              )}
+              ) : (
+                <div className="flex items-center space-x-2 ml-4">
+                  <Link
+                    href="/login"
+                    className="px-4 py-2 bg-white text-purple-600 rounded-md hover:bg-gray-100 transition-colors"
+                  >
+                    Login/Signup
+                  </Link>
+                </div>
+              )
+            )}
+
+            <Link
+              href="/cart"
+              className="ml-4 p-2 rounded-full text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-600 focus:ring-white"
+              aria-label={t('cart')}
+              title={t('cart')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </Link>
           </div>
-          
+
           {/* Mobile menu */}
           <div className={`${isMenuOpen ? 'block fixed inset-0 bg-gradient-to-b from-purple-700 to-indigo-800 z-50' : 'hidden'} md:hidden`}>
             {/* Mobile header with back button */}
             <div className="flex items-center justify-between px-4 py-3 bg-purple-800 border-b border-purple-600">
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(false)}
                 className="flex items-center text-white p-2 rounded-full hover:bg-white/10"
                 aria-label={t('closeMenu')}
@@ -267,11 +276,14 @@ export default function Navbar() {
                 {t('mobileContact')}
               </Link>
               <Link
-                href="/gallery"
+                href="/cart"
                 className="flex items-center px-5 py-3.5 rounded-xl text-lg font-semibold text-white hover:bg-white/10 transition-colors border-l-4 border-transparent hover:border-yellow-400"
                 onClick={() => setIsMenuOpen(false)}
               >
-                {t('gallery')}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {t('cart')}
               </Link>
               <Link
                 href="/settings"
@@ -289,7 +301,7 @@ export default function Navbar() {
                   {t('mobileMessages')}
                 </Link>
               )}
-              
+
               {isAdmin && (
                 <Link
                   href="/admin/profile"
@@ -299,9 +311,9 @@ export default function Navbar() {
                   {t('mobileAdminProfile')}
                 </Link>
               )}
-              
+
               {!loading && (
-              session ? (
+                session ? (
                   <div className="pt-4 pb-3 border-t border-white/20 mt-4">
                     <div className="flex items-center px-4">
                       <div className={`h-12 w-12 ${isAdmin ? 'rounded-md' : 'rounded-full'} bg-white flex items-center justify-center text-purple-600 font-semibold text-lg`}>
@@ -343,7 +355,7 @@ export default function Navbar() {
                       >
                         {t('logout')}
                       </button>
-                      
+
                     </div>
                   </div>
                 ) : (
@@ -360,7 +372,7 @@ export default function Navbar() {
               )}
             </div>
           </div>
-          
+
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center ml-4">
             <button

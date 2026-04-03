@@ -32,7 +32,12 @@ const resources: Resources = {
     about: "About Us",
     contact: "Contact",
     messages: "Messages",
+    cart: "Cart",
     adminProfile: "Admin Profile",
+    missingCartItems: "Missing Cart items?",
+    loginToSeeItems: "Login to see the items you added previously",
+    emptyCartMessage: "Your shopping cart is empty",
+    shopNow: "Shop Now",
 
     // Mobile labels with emojis
     mobileHome: "🏠 Home",
@@ -74,7 +79,12 @@ const resources: Resources = {
     about: "हमारे बारे में",
     contact: "संपर्क",
     messages: "संदेश",
+    cart: "कार्ट",
     adminProfile: "एडमिन प्रोफ़ाइल",
+    missingCartItems: "कार्ट में कोई सामान नहीं है?",
+    loginToSeeItems: "पहले जोड़े गए सामानों को देखने के लिए लॉगिन करें",
+    emptyCartMessage: "आपकी कार्ट अभी खाली है",
+    shopNow: "अभी खरीदारी करें",
 
     // Mobile labels with emojis
     mobileHome: "🏠 होम",
